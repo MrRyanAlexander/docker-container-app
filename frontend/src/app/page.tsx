@@ -33,7 +33,7 @@ export default function Home() {
                 Go to Dashboard
               </Link>
               <a
-                href="/auth/logout"
+                href="/api/auth/logout"
                 className="inline-block bg-gray-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-gray-700 transition-colors"
               >
                 Logout
@@ -56,13 +56,13 @@ export default function Home() {
             </div>
             <div className="space-x-4">
               <a
-                href="/auth/login"
+                href="/api/auth/login"
                 className="text-gray-600 hover:text-blue-600 transition-colors"
               >
                 Login
               </a>
               <a
-                href="/auth/login"
+                href="/api/auth/login"
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
               >
                 Sign Up

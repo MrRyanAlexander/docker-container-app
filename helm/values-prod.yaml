@@ -1,0 +1,127 @@
+# Production environment overrides
+global:
+  environment: production
+
+# Application configuration for production
+app:
+  replicas: 3
+
+# Frontend configuration for production
+frontend:
+  image:
+    pullPolicy: IfNotPresent
+  
+  env:
+    NODE_ENV: production
+    AUTH0_BASE_URL: "https://container-app.com"
+  
+  # Higher resources for production
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "1Gi"
+      cpu: "1"
+
+# Database configuration for production
+database:
+  storage:
+    size: 100Gi
+    className: fast-ssd
+  
+  # Higher resources for production
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+    limits:
+      memory: "4Gi"
+      cpu: "2"
+
+# Traefik configuration for production
+traefik:
+  ingress:
+    annotations:
+      traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+      traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
+      traefik.ingress.kubernetes.io/router.middlewares: default-security@kubernetescrd,default-rate-limit@kubernetescrd
+      # Cloudflare proxy headers
+      traefik.ingress.kubernetes.io/router.middlewares: cloudflare-ips@kubernetescrd
+    
+    hosts:
+      - host: container-app.com
+        paths:
+          - path: /
+            pathType: Prefix
+    
+    tls:
+      - secretName: container-app-tls
+        hosts:
+          - container-app.com
+
+# Enable network policies in production
+networkPolicies:
+  enabled: true
+  isolateContainers: true
+
+# Container configuration for production
+containers:
+  defaultResources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "1Gi"
+      cpu: "1"
+  
+  # Production cleanup settings
+  cleanup:
+    idleTimeoutMinutes: 60
+    maxLifetimeHours: 24
+    cleanupIntervalMinutes: 10
+  
+  storage:
+    size: 5Gi
+    className: fast-ssd
+
+# Enable monitoring in production
+monitoring:
+  enabled: true
+  prometheus:
+    enabled: true
+  grafana:
+    enabled: true
+
+# Production secrets (these MUST be set via external secret management)
+secrets:
+  auth0:
+    secret: ""  # Set via external secrets
+    issuerBaseUrl: ""  # Set via external secrets
+    clientId: ""  # Set via external secrets
+    clientSecret: ""  # Set via external secrets
+    audience: ""  # Set via external secrets
+  
+  database:
+    password: ""  # Set via external secrets
+    url: ""  # Set via external secrets
+
+# Additional production middlewares
+traefik:
+  middlewares:
+    # Stricter rate limiting for production
+    rateLimit:
+      rateLimit:
+        average: 50
+        burst: 100
+        period: 1m
+    
+    # Additional security headers
+    security:
+      headers:
+        # Add HSTS with longer duration
+        stsSeconds: 63072000  # 2 years
+        stsPreload: true
+        # Add additional security headers
+        customRequestHeaders:
+          X-Forwarded-Proto: "https" 

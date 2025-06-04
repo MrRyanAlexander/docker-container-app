@@ -1,0 +1,160 @@
+{{- if .Values.networkPolicies.enabled }}
+# Default deny all ingress traffic
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: {{ .Values.global.namespace }}
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+---
+# Allow frontend to access database
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: frontend-to-database
+  namespace: {{ .Values.global.namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app: {{ .Values.database.name }}
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: {{ .Values.frontend.name }}
+    ports:
+    - protocol: TCP
+      port: {{ .Values.database.service.port }}
+---
+# Allow Traefik to access frontend
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: traefik-to-frontend
+  namespace: {{ .Values.global.namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app: {{ .Values.frontend.name }}
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: traefik-system
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: traefik
+    ports:
+    - protocol: TCP
+      port: {{ .Values.frontend.service.targetPort }}
+---
+{{- if .Values.networkPolicies.isolateContainers }}
+# Isolate user containers - only allow access from Traefik
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: isolate-user-containers
+  namespace: {{ .Values.global.namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      type: user-container
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  {{- range .Values.networkPolicies.allowedIngress }}
+  - from:
+    {{- range .from }}
+    {{- if .podSelector }}
+    - podSelector:
+        matchLabels:
+          {{- range $key, $value := .podSelector.matchLabels }}
+          {{ $key }}: {{ $value }}
+          {{- end }}
+    {{- end }}
+    {{- if .namespaceSelector }}
+    - namespaceSelector:
+        matchLabels:
+          {{- range $key, $value := .namespaceSelector.matchLabels }}
+          {{ $key }}: {{ $value }}
+          {{- end }}
+    {{- end }}
+    {{- end }}
+    ports:
+    {{- range .ports }}
+    - protocol: {{ .protocol }}
+      port: {{ .port }}
+    {{- end }}
+  {{- end }}
+  egress:
+  {{- range .Values.networkPolicies.allowedEgress }}
+  - to:
+    {{- if .to }}
+    {{- range .to }}
+    {{- if .podSelector }}
+    - podSelector:
+        matchLabels:
+          {{- range $key, $value := .podSelector.matchLabels }}
+          {{ $key }}: {{ $value }}
+          {{- end }}
+    {{- end }}
+    {{- if .namespaceSelector }}
+    - namespaceSelector:
+        matchLabels:
+          {{- range $key, $value := .namespaceSelector.matchLabels }}
+          {{ $key }}: {{ $value }}
+          {{- end }}
+    {{- end }}
+    {{- if not .podSelector and not .namespaceSelector }}
+    - {}
+    {{- end }}
+    {{- end }}
+    {{- else }}
+    - {}
+    {{- end }}
+    ports:
+    {{- range .ports }}
+    - protocol: {{ .protocol }}
+      port: {{ .port }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+---
+# Allow DNS resolution for all pods
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: {{ .Values.global.namespace }}
+spec:
+  podSelector: {}
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  - to:
+    - podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+{{- end }} 

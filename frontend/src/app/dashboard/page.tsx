@@ -15,12 +15,33 @@ interface ContainerStatus {
   };
 }
 
+interface UserEnvironment {
+  theme: string;
+  tools: string[];
+  editor: string;
+  shell: string;
+  preferences: {
+    autoSave: boolean;
+    fontSize: number;
+    tabSize: number;
+    lineNumbers: boolean;
+    wordWrap: boolean;
+  };
+  environment: {
+    NODE_VERSION: string;
+    TIMEZONE: string;
+  };
+}
+
 export default function Dashboard() {
   const { user, isLoading } = useUser();
   const router = useRouter();
   const [containerStatus, setContainerStatus] = useState<ContainerStatus>({ status: 'STOPPED' });
   const [isManaging, setIsManaging] = useState(false);
   const [containerId, setContainerId] = useState<string | null>(null);
+  const [userEnv, setUserEnv] = useState<UserEnvironment | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const [isUpdatingEnv, setIsUpdatingEnv] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -31,6 +52,7 @@ export default function Dashboard() {
   useEffect(() => {
     if (user) {
       fetchContainerStatus();
+      fetchUserEnvironment();
     }
   }, [user]);
 
@@ -51,6 +73,62 @@ export default function Dashboard() {
       console.error('Error fetching container status:', error);
     }
   };
+
+  const fetchUserEnvironment = async () => {
+    try {
+      const response = await fetch('/api/user-env');
+      if (response.ok) {
+        const config = await response.json();
+        setUserEnv(config);
+      }
+    } catch (error) {
+      console.error('Error fetching user environment:', error);
+    }
+  };
+
+  const updateUserEnvironment = async (newConfig: UserEnvironment) => {
+    setIsUpdatingEnv(true);
+    try {
+      const response = await fetch('/api/user-env', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newConfig),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setUserEnv(result.config);
+        alert('Environment settings updated successfully!');
+      } else {
+        throw new Error('Failed to update environment');
+      }
+    } catch (error) {
+      console.error('Error updating user environment:', error);
+      alert('Failed to update environment settings');
+    } finally {
+      setIsUpdatingEnv(false);
+    }
+  };
+
+  const handleToolToggle = (tool: string) => {
+    if (!userEnv) return;
+    
+    const newTools = userEnv.tools.includes(tool)
+      ? userEnv.tools.filter(t => t !== tool)
+      : [...userEnv.tools, tool];
+    
+    setUserEnv({
+      ...userEnv,
+      tools: newTools
+    });
+  };
+
+  const availableTools = [
+    'nodejs', 'python', 'git', 'curl', 'wget', 'vim', 'nano', 'htop', 
+    'docker', 'kubectl', 'helm', 'nginx', 'redis-cli', 'postgresql-client'
+  ];
 
   const handleStartContainer = async () => {
     if (!containerId) return;
@@ -310,6 +388,105 @@ export default function Dashboard() {
               </div>
             </div>
 
+            {/* Environment Settings Button */}
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <button
+                onClick={() => setShowSettings(!showSettings)}
+                className="w-full flex items-center justify-between text-left font-semibold text-gray-900 hover:text-blue-600 transition-colors"
+              >
+                <span>⚙️ Environment Settings</span>
+                <span className={`transform transition-transform ${showSettings ? 'rotate-180' : ''}`}>
+                  ▼
+                </span>
+              </button>
+              
+              {showSettings && userEnv && (
+                <div className="mt-4 space-y-4">
+                  {/* Tools Selection */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Available Tools
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {availableTools.map((tool) => (
+                        <label
+                          key={tool}
+                          className="flex items-center space-x-2 text-sm cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={userEnv.tools.includes(tool)}
+                            onChange={() => handleToolToggle(tool)}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="capitalize">{tool}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Editor Selection */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Default Editor
+                    </label>
+                    <select
+                      value={userEnv.editor}
+                      onChange={(e) => setUserEnv({ ...userEnv, editor: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="vim">Vim</option>
+                      <option value="nano">Nano</option>
+                      <option value="emacs">Emacs</option>
+                      <option value="code">VS Code</option>
+                    </select>
+                  </div>
+
+                  {/* Shell Selection */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Default Shell
+                    </label>
+                    <select
+                      value={userEnv.shell}
+                      onChange={(e) => setUserEnv({ ...userEnv, shell: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="bash">Bash</option>
+                      <option value="zsh">Zsh</option>
+                      <option value="fish">Fish</option>
+                      <option value="sh">Sh</option>
+                    </select>
+                  </div>
+
+                  {/* Theme Selection */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Theme
+                    </label>
+                    <select
+                      value={userEnv.theme}
+                      onChange={(e) => setUserEnv({ ...userEnv, theme: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="light">Light</option>
+                      <option value="dark">Dark</option>
+                      <option value="auto">Auto</option>
+                    </select>
+                  </div>
+
+                  {/* Save Button */}
+                  <button
+                    onClick={() => updateUserEnvironment(userEnv)}
+                    disabled={isUpdatingEnv}
+                    className="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {isUpdatingEnv ? 'Saving...' : 'Save Settings'}
+                  </button>
+                </div>
+              )}
+            </div>
+
             {/* Resource Limits */}
             <div className="bg-white rounded-lg shadow-sm p-6">
               <h3 className="font-semibold mb-4">Resource Limits</h3>
@@ -345,6 +522,12 @@ export default function Dashboard() {
                   <span className="text-gray-600">Uptime:</span>
                   <span>{containerStatus.uptime || '0m'}</span>
                 </div>
+                {userEnv && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Tools enabled:</span>
+                    <span>{userEnv.tools.length}</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>

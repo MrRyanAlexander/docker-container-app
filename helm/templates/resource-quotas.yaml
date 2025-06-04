@@ -1,0 +1,163 @@
+# Namespace-level resource quota
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: namespace-quota
+  namespace: {{ .Values.global.namespace }}
+spec:
+  hard:
+    # Pod limits
+    pods: "100"
+    persistentvolumeclaims: "50"
+    services: "20"
+    secrets: "50"
+    configmaps: "50"
+    
+    # Compute resource limits
+    requests.cpu: "20"
+    requests.memory: "40Gi"
+    limits.cpu: "40"
+    limits.memory: "80Gi"
+    
+    # Storage limits
+    requests.storage: "500Gi"
+    
+    # Network policies
+    count/networkpolicies.networking.k8s.io: "10"
+
+---
+# User container resource quota template
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: user-container-quota
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    type: user-container-quota
+spec:
+  hard:
+    # Per-user container limits
+    pods: "5"
+    persistentvolumeclaims: "5"
+    
+    # Compute resources per user
+    requests.cpu: "2"
+    requests.memory: "4Gi"
+    limits.cpu: "4"
+    limits.memory: "8Gi"
+    
+    # Storage per user
+    requests.storage: "20Gi"
+  
+  # Scope to user containers only
+  scopes:
+  - NotTerminating
+  scopeSelector:
+    matchExpressions:
+    - operator: In
+      scopeName: PriorityClass
+      values: ["user-workload"]
+
+---
+# Limit range for individual containers
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: container-limits
+  namespace: {{ .Values.global.namespace }}
+spec:
+  limits:
+  # Default limits for containers
+  - default:
+      cpu: "500m"
+      memory: "512Mi"
+      ephemeral-storage: "1Gi"
+    defaultRequest:
+      cpu: "100m"
+      memory: "128Mi"
+      ephemeral-storage: "100Mi"
+    max:
+      cpu: "2"
+      memory: "4Gi"
+      ephemeral-storage: "10Gi"
+    min:
+      cpu: "50m"
+      memory: "64Mi"
+      ephemeral-storage: "50Mi"
+    type: Container
+  
+  # Limits for persistent volume claims
+  - max:
+      storage: "10Gi"
+    min:
+      storage: "1Gi"
+    type: PersistentVolumeClaim
+  
+  # Pod-level limits
+  - max:
+      cpu: "2"
+      memory: "4Gi"
+    min:
+      cpu: "50m"
+      memory: "64Mi"
+    type: Pod
+
+---
+{{- if .Values.costOptimization.userQuotas.enabled }}
+# Priority class for user workloads (lower priority for cost optimization)
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: user-workload
+value: 100
+globalDefault: false
+description: "Priority class for user containers - can be preempted for system workloads"
+
+---
+# Priority class for system workloads
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: system-workload
+value: 1000
+globalDefault: false
+description: "Priority class for system components - higher priority than user workloads"
+{{- end }}
+
+---
+{{- if .Values.costOptimization.networkPolicies.enabled }}
+# Network policy to limit egress traffic (reduce data transfer costs)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: cost-optimization-egress
+  namespace: {{ .Values.global.namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      type: user-container
+  policyTypes:
+  - Egress
+  egress:
+  # Allow DNS
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  
+  # Allow internal cluster communication
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: {{ .Values.global.namespace }}
+  
+  # Allow specific external services only
+  {{- range .Values.costOptimization.allowedExternalServices }}
+  - to: []
+    ports:
+    - protocol: {{ .protocol }}
+      port: {{ .port }}
+  {{- end }}
+{{- end }} 

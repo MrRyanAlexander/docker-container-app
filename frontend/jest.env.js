@@ -1,0 +1,15 @@
+// Test environment variables
+process.env.NODE_ENV = 'test'
+process.env.AUTH0_SECRET = 'test-secret-32-chars-long-please'
+process.env.AUTH0_BASE_URL = 'http://localhost:3000'
+process.env.AUTH0_ISSUER_BASE_URL = 'https://test.auth0.com'
+process.env.AUTH0_CLIENT_ID = 'test-client-id'
+process.env.AUTH0_CLIENT_SECRET = 'test-client-secret'
+process.env.AUTH0_AUDIENCE = 'https://api.test.com'
+process.env.DATABASE_URL = 'postgresql://test:test@localhost:5432/test'
+process.env.DOCKER_SOCKET_PATH = '/var/run/docker.sock'
+process.env.LOG_LEVEL = 'error' // Reduce log noise in tests
+process.env.CONTAINER_POOL_SIZE = '3'
+process.env.CONTAINER_POOL_MAX_IDLE_TIME = '60'
+process.env.CONTAINER_POOL_PREWARM_IMAGES = 'node:18-alpine'
+process.env.CONTAINER_POOL_MAX_PER_IMAGE = '2' 

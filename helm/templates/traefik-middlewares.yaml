@@ -1,0 +1,61 @@
+{{- if .Values.traefik.enabled }}
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: security
+  namespace: {{ .Values.global.namespace }}
+spec:
+  headers:
+    accessControlAllowMethods:
+      {{- range .Values.traefik.middlewares.security.headers.accessControlAllowMethods }}
+      - {{ . | quote }}
+      {{- end }}
+    accessControlMaxAge: {{ .Values.traefik.middlewares.security.headers.accessControlMaxAge }}
+    hostsProxyHeaders:
+      {{- range .Values.traefik.middlewares.security.headers.hostsProxyHeaders }}
+      - {{ . | quote }}
+      {{- end }}
+    referrerPolicy: {{ .Values.traefik.middlewares.security.headers.referrerPolicy | quote }}
+    contentSecurityPolicy: {{ .Values.traefik.middlewares.security.headers.contentSecurityPolicy | quote }}
+    frameDeny: {{ .Values.traefik.middlewares.security.headers.frameDeny }}
+    contentTypeNosniff: {{ .Values.traefik.middlewares.security.headers.contentTypeNosniff }}
+    browserXssFilter: {{ .Values.traefik.middlewares.security.headers.browserXssFilter }}
+    forceSTSHeader: {{ .Values.traefik.middlewares.security.headers.forceSTSHeader }}
+    stsIncludeSubdomains: {{ .Values.traefik.middlewares.security.headers.stsIncludeSubdomains }}
+    stsSeconds: {{ .Values.traefik.middlewares.security.headers.stsSeconds }}
+    stsPreload: {{ .Values.traefik.middlewares.security.headers.stsPreload }}
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: rate-limit
+  namespace: {{ .Values.global.namespace }}
+spec:
+  rateLimit:
+    average: {{ .Values.traefik.middlewares.rateLimit.rateLimit.average }}
+    burst: {{ .Values.traefik.middlewares.rateLimit.rateLimit.burst }}
+    period: {{ .Values.traefik.middlewares.rateLimit.rateLimit.period | quote }}
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: container-auth
+  namespace: {{ .Values.global.namespace }}
+spec:
+  forwardAuth:
+    address: "http://{{ .Values.frontend.name }}-service:{{ .Values.frontend.service.port }}/api/auth/verify"
+    authResponseHeaders:
+      - "X-User-Id"
+      - "X-User-Email"
+      - "X-User-Roles"
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: strip-prefix-containers
+  namespace: {{ .Values.global.namespace }}
+spec:
+  stripPrefix:
+    prefixes:
+      - "/containers"
+{{- end }} 

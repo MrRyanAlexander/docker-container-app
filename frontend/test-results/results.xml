@@ -1,0 +1,42 @@
+<testsuites id="" name="" tests="15" failures="0" skipped="0" errors="0" time="16.907977">
+<testsuite name="user-flows.spec.ts" timestamp="2025-06-04T23:46:29.286Z" hostname="chromium" tests="15" failures="0" skipped="0" time="57.873" errors="0">
+<testcase name="User Authentication Flow › should display landing page with login option" classname="user-flows.spec.ts" time="6.212">
+</testcase>
+<testcase name="User Authentication Flow › should redirect to Auth0 when clicking login" classname="user-flows.spec.ts" time="11.341">
+</testcase>
+<testcase name="User Authentication Flow › should show maintenance page when services are down" classname="user-flows.spec.ts" time="5.732">
+</testcase>
+<testcase name="Dashboard and Container Management › should display user dashboard when authenticated" classname="user-flows.spec.ts" time="5.005">
+<system-out>
+<![CDATA[✓ Dashboard page loaded successfully
+]]>
+</system-out>
+</testcase>
+<testcase name="Dashboard and Container Management › should show container creation option" classname="user-flows.spec.ts" time="5.019">
+</testcase>
+<testcase name="Dashboard and Container Management › should handle container status display" classname="user-flows.spec.ts" time="4.193">
+</testcase>
+<testcase name="API Health and Monitoring › should access health check endpoint" classname="user-flows.spec.ts" time="0.652">
+<system-out>
+<![CDATA[✓ Health check correctly returns unhealthy status without database
+]]>
+</system-out>
+</testcase>
+<testcase name="API Health and Monitoring › should handle API rate limiting gracefully" classname="user-flows.spec.ts" time="2.244">
+</testcase>
+<testcase name="API Health and Monitoring › should handle API errors gracefully" classname="user-flows.spec.ts" time="0.848">
+</testcase>
+<testcase name="Responsive Design › should work on mobile viewport" classname="user-flows.spec.ts" time="3.222">
+</testcase>
+<testcase name="Responsive Design › should work on tablet viewport" classname="user-flows.spec.ts" time="3.231">
+</testcase>
+<testcase name="Responsive Design › should work on desktop" classname="user-flows.spec.ts" time="3.304">
+</testcase>
+<testcase name="Performance and Accessibility › should load main pages quickly" classname="user-flows.spec.ts" time="2.839">
+</testcase>
+<testcase name="Performance and Accessibility › should have proper page titles" classname="user-flows.spec.ts" time="2.339">
+</testcase>
+<testcase name="Performance and Accessibility › should have accessible form elements" classname="user-flows.spec.ts" time="1.692">
+</testcase>
+</testsuite>
+</testsuites>

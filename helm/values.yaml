@@ -1,0 +1,390 @@
+# Default values for container-app
+# This is a YAML-formatted file.
+
+# Global settings
+global:
+  environment: development
+  namespace: per-user-app
+  cloudProvider: gcp  # Options: gcp, aws, azure
+  clusterName: container-app-cluster
+
+# Application configuration
+app:
+  name: container-app
+  version: "1.0.0"
+  replicas: 2
+
+# Frontend configuration
+frontend:
+  name: frontend
+  image:
+    repository: per-user-app/frontend
+    tag: latest
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 3000
+  
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+  
+  env:
+    NODE_ENV: production
+    AUTH0_BASE_URL: "https://your-domain.com"
+  
+  # Health checks
+  livenessProbe:
+    httpGet:
+      path: /
+      port: 3000
+    initialDelaySeconds: 30
+    periodSeconds: 10
+  
+  readinessProbe:
+    httpGet:
+      path: /
+      port: 3000
+    initialDelaySeconds: 5
+    periodSeconds: 5
+
+# Database configuration
+database:
+  enabled: true
+  name: postgres
+  image:
+    repository: postgres
+    tag: "14-alpine"
+  
+  service:
+    type: ClusterIP
+    port: 5432
+  
+  storage:
+    size: 10Gi
+    className: default
+  
+  env:
+    POSTGRES_DB: container_app
+    POSTGRES_USER: postgres
+  
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "1Gi"
+      cpu: "1"
+
+# Traefik configuration
+traefik:
+  enabled: true
+  
+  # Ingress configuration
+  ingress:
+    enabled: true
+    className: traefik
+    annotations:
+      traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+      traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
+      traefik.ingress.kubernetes.io/router.middlewares: default-security@kubernetescrd
+    
+    hosts:
+      - host: your-domain.com
+        paths:
+          - path: /
+            pathType: Prefix
+    
+    tls:
+      - secretName: container-app-tls
+        hosts:
+          - your-domain.com
+  
+  # Middleware configuration
+  middlewares:
+    security:
+      headers:
+        accessControlAllowMethods:
+          - GET
+          - OPTIONS
+          - PUT
+          - POST
+          - DELETE
+        accessControlMaxAge: 100
+        hostsProxyHeaders:
+          - "X-Forwarded-Host"
+        referrerPolicy: "same-origin"
+        contentSecurityPolicy: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:; frame-ancestors 'none';"
+        frameDeny: true
+        contentTypeNosniff: true
+        browserXssFilter: true
+        forceSTSHeader: true
+        stsIncludeSubdomains: true
+        stsSeconds: 31536000
+        stsPreload: true
+    
+    rateLimit:
+      rateLimit:
+        average: 100
+        burst: 200
+        period: 1m
+
+# Container management configuration
+containers:
+  # Default resource limits for user containers
+  defaultResources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+  
+  # Cleanup configuration
+  cleanup:
+    idleTimeoutMinutes: 30
+    maxLifetimeHours: 24
+    cleanupIntervalMinutes: 5
+  
+  # Storage configuration
+  storage:
+    size: 1Gi
+    className: default
+
+# Secrets configuration
+secrets:
+  auth0:
+    secret: ""
+    issuerBaseUrl: ""
+    clientId: ""
+    clientSecret: ""
+    audience: ""
+  
+  database:
+    password: ""
+    url: ""
+
+# Network policies
+networkPolicies:
+  enabled: true
+  
+  # Isolate user containers
+  isolateContainers: true
+  
+  # Allow specific ingress/egress
+  allowedIngress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: traefik
+      ports:
+        - protocol: TCP
+          port: 3000
+  
+  allowedEgress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+    - to: {}
+      ports:
+        - protocol: TCP
+          port: 53
+        - protocol: UDP
+          port: 53
+
+# Monitoring configuration
+monitoring:
+  enabled: false
+  prometheus:
+    enabled: false
+  grafana:
+    enabled: false
+
+# Development overrides
+dev:
+  enabled: false
+  frontend:
+    image:
+      pullPolicy: Always
+    env:
+      NODE_ENV: development
+      AUTH0_BASE_URL: "http://localhost:3000"
+  
+  database:
+    storage:
+      size: 1Gi
+  
+  traefik:
+    ingress:
+      hosts:
+        - host: localhost
+          paths:
+            - path: /
+              pathType: Prefix 
+
+# Cost optimization configuration
+costOptimization:
+  enabled: true
+  
+  # User quotas and limits
+  userQuotas:
+    enabled: true
+    maxPodsPerUser: 5
+    maxCPUPerUser: "2"
+    maxMemoryPerUser: "4Gi"
+    maxStoragePerUser: "20Gi"
+  
+  # Spot/preemptible nodes configuration
+  spotNodes:
+    enabled: true
+    initialNodeCount: 2
+    minNodes: 1
+    maxNodes: 10
+    
+    # GCP settings
+    machineType: "e2-standard-2"
+    diskSizeGb: 50
+    
+    # AWS settings
+    instanceTypes:
+      - "t3.medium"
+      - "t3a.medium"
+      - "t2.medium"
+    
+    # Azure settings
+    vmSize: "Standard_D2s_v3"
+    maxPrice: 0.1  # Maximum price per hour
+  
+  # Network policies for cost control
+  networkPolicies:
+    enabled: true
+    allowedExternalServices:
+      - protocol: TCP
+        port: 443  # HTTPS
+      - protocol: TCP
+        port: 80   # HTTP
+      - protocol: TCP
+        port: 22   # SSH (limited)
+  
+  # Container pooling for faster startup
+  containerPool:
+    enabled: true
+    poolSize: 5
+    maxIdleTime: 300  # 5 minutes
+    preWarmImages:
+      - "node:18-alpine"
+      - "python:3.11-alpine"
+      - "ubuntu:22.04"
+
+# Autoscaling configuration
+autoscaling:
+  enabled: true
+  
+  # Frontend autoscaling
+  frontend:
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilization: 70
+    targetMemoryUtilization: 80
+    
+    # Custom metrics
+    customMetrics:
+      enabled: true
+      maxContainersPerPod: 10
+    
+    # Scaling policies
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      percentPolicy: 100
+      podsPolicy: 2
+      periodSeconds: 60
+    
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      percentPolicy: 50
+      podsPolicy: 1
+      periodSeconds: 60
+  
+  # Database autoscaling (read replicas)
+  database:
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilization: 75
+    targetMemoryUtilization: 85
+    
+    scaleUp:
+      stabilizationWindowSeconds: 120
+      podsPolicy: 1
+      periodSeconds: 120
+    
+    scaleDown:
+      stabilizationWindowSeconds: 600
+      podsPolicy: 1
+      periodSeconds: 120
+  
+  # Vertical Pod Autoscaler
+  vpa:
+    enabled: false  # Enable if VPA is installed
+    updateMode: "Auto"  # Options: Off, Initial, Recreation, Auto
+    minCPU: "100m"
+    maxCPU: "2"
+    minMemory: "128Mi"
+    maxMemory: "4Gi"
+
+# Budget monitoring and alerts
+budgetMonitoring:
+  enabled: true
+  
+  # Monthly budget limits
+  monthlyBudget:
+    total: 1000  # USD
+    compute: 600
+    storage: 200
+    networking: 100
+    other: 100
+  
+  # Alert thresholds (percentage of budget)
+  alerts:
+    warning: 80
+    critical: 95
+    emergency: 100
+  
+  # Cost allocation tags
+  costTags:
+    Environment: "{{ .Values.global.environment }}"
+    Project: "container-app"
+    Owner: "platform-team"
+    Component: "user-containers"
+
+# Resource monitoring
+resourceMonitoring:
+  enabled: true
+  
+  # Metrics collection
+  metrics:
+    enabled: true
+    retention: "30d"
+    scrapeInterval: "30s"
+  
+  # Cost tracking
+  costTracking:
+    enabled: true
+    granularity: "daily"  # Options: hourly, daily, weekly
+    retention: "90d"
+  
+  # Usage optimization recommendations
+  optimization:
+    enabled: true
+    analysisInterval: "24h"
+    rightsizingEnabled: true
+    unusedResourceDetection: true 

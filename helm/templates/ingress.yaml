@@ -1,0 +1,89 @@
+{{- if .Values.traefik.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: main-ingress
+  namespace: {{ .Values.global.namespace }}
+  annotations:
+    {{- range $key, $value := .Values.traefik.ingress.annotations }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+spec:
+  ingressClassName: {{ .Values.traefik.ingress.className }}
+  {{- if .Values.traefik.ingress.tls }}
+  tls:
+    {{- range .Values.traefik.ingress.tls }}
+    - hosts:
+        {{- range .hosts }}
+        - {{ . | quote }}
+        {{- end }}
+      secretName: {{ .secretName }}
+    {{- end }}
+  {{- end }}
+  rules:
+    {{- range .Values.traefik.ingress.hosts }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
+            backend:
+              service:
+                name: {{ $.Values.frontend.name }}-service
+                port:
+                  number: {{ $.Values.frontend.service.port }}
+          {{- end }}
+    {{- end }}
+---
+{{- if .Values.traefik.enabled }}
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: container-routes
+  namespace: {{ .Values.global.namespace }}
+spec:
+  entryPoints:
+    - web
+    - websecure
+  routes:
+    # Main application routes
+    - match: Host(`{{ (index .Values.traefik.ingress.hosts 0).host }}`)
+      kind: Rule
+      services:
+        - name: {{ .Values.frontend.name }}-service
+          port: {{ .Values.frontend.service.port }}
+      middlewares:
+        - name: security
+        - name: rate-limit
+    
+    # Dynamic routing to user containers
+    - match: Host(`{{ (index .Values.traefik.ingress.hosts 0).host }}`) && PathPrefix(`/containers/`)
+      kind: Rule
+      services:
+        - name: container-router
+          port: 80
+      middlewares:
+        - name: container-auth
+        - name: strip-prefix-containers
+        - name: security
+        - name: rate-limit
+  
+  {{- if .Values.traefik.ingress.tls }}
+  tls:
+    certResolver: letsencrypt
+  {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: container-router
+  namespace: {{ .Values.global.namespace }}
+spec:
+  type: ExternalName
+  externalName: container-router.{{ .Values.global.namespace }}.svc.cluster.local
+  ports:
+  - port: 80
+    targetPort: 8080
+{{- end }}
+{{- end }} 

@@ -1,0 +1,140 @@
+{{- if .Values.autoscaling.enabled }}
+# HPA for frontend application
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: frontend-hpa
+  namespace: {{ .Values.global.namespace }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ .Values.frontend.name }}
+  minReplicas: {{ .Values.autoscaling.frontend.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.frontend.maxReplicas }}
+  metrics:
+  # CPU-based scaling
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: {{ .Values.autoscaling.frontend.targetCPUUtilization }}
+  
+  # Memory-based scaling
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: {{ .Values.autoscaling.frontend.targetMemoryUtilization }}
+  
+  # Custom metrics (if available)
+  {{- if .Values.autoscaling.frontend.customMetrics.enabled }}
+  - type: Pods
+    pods:
+      metric:
+        name: active_containers_per_pod
+      target:
+        type: AverageValue
+        averageValue: "{{ .Values.autoscaling.frontend.customMetrics.maxContainersPerPod }}"
+  {{- end }}
+  
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: {{ .Values.autoscaling.frontend.scaleDown.stabilizationWindowSeconds }}
+      policies:
+      - type: Percent
+        value: {{ .Values.autoscaling.frontend.scaleDown.percentPolicy }}
+        periodSeconds: {{ .Values.autoscaling.frontend.scaleDown.periodSeconds }}
+      - type: Pods
+        value: {{ .Values.autoscaling.frontend.scaleDown.podsPolicy }}
+        periodSeconds: {{ .Values.autoscaling.frontend.scaleDown.periodSeconds }}
+      selectPolicy: Min
+    
+    scaleUp:
+      stabilizationWindowSeconds: {{ .Values.autoscaling.frontend.scaleUp.stabilizationWindowSeconds }}
+      policies:
+      - type: Percent
+        value: {{ .Values.autoscaling.frontend.scaleUp.percentPolicy }}
+        periodSeconds: {{ .Values.autoscaling.frontend.scaleUp.periodSeconds }}
+      - type: Pods
+        value: {{ .Values.autoscaling.frontend.scaleUp.podsPolicy }}
+        periodSeconds: {{ .Values.autoscaling.frontend.scaleUp.periodSeconds }}
+      selectPolicy: Max
+
+---
+{{- if .Values.database.enabled }}
+# HPA for database (if clustering is enabled)
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: database-hpa
+  namespace: {{ .Values.global.namespace }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ .Values.database.name }}
+  minReplicas: {{ .Values.autoscaling.database.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.database.maxReplicas }}
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: {{ .Values.autoscaling.database.targetCPUUtilization }}
+  
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: {{ .Values.autoscaling.database.targetMemoryUtilization }}
+  
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: {{ .Values.autoscaling.database.scaleDown.stabilizationWindowSeconds }}
+      policies:
+      - type: Pods
+        value: {{ .Values.autoscaling.database.scaleDown.podsPolicy }}
+        periodSeconds: {{ .Values.autoscaling.database.scaleDown.periodSeconds }}
+      selectPolicy: Min
+    
+    scaleUp:
+      stabilizationWindowSeconds: {{ .Values.autoscaling.database.scaleUp.stabilizationWindowSeconds }}
+      policies:
+      - type: Pods
+        value: {{ .Values.autoscaling.database.scaleUp.podsPolicy }}
+        periodSeconds: {{ .Values.autoscaling.database.scaleUp.periodSeconds }}
+      selectPolicy: Max
+{{- end }}
+
+---
+# Vertical Pod Autoscaler for cost optimization (if VPA is available)
+{{- if .Values.autoscaling.vpa.enabled }}
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: frontend-vpa
+  namespace: {{ .Values.global.namespace }}
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ .Values.frontend.name }}
+  updatePolicy:
+    updateMode: "{{ .Values.autoscaling.vpa.updateMode }}"
+  resourcePolicy:
+    containerPolicies:
+    - containerName: frontend
+      maxAllowed:
+        cpu: "{{ .Values.autoscaling.vpa.maxCPU }}"
+        memory: "{{ .Values.autoscaling.vpa.maxMemory }}"
+      minAllowed:
+        cpu: "{{ .Values.autoscaling.vpa.minCPU }}"
+        memory: "{{ .Values.autoscaling.vpa.minMemory }}"
+      controlledResources: ["cpu", "memory"]
+{{- end }}
+{{- end }} 

@@ -1,0 +1,81 @@
+# Development environment overrides
+global:
+  environment: development
+
+# Frontend overrides for development
+frontend:
+  image:
+    pullPolicy: Always
+  env:
+    NODE_ENV: development
+    AUTH0_BASE_URL: "http://localhost:3000"
+  
+  # Reduced resources for development
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "256Mi"
+      cpu: "250m"
+
+# Database overrides for development
+database:
+  storage:
+    size: 1Gi
+  
+  # Reduced resources for development
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+# Traefik overrides for development
+traefik:
+  ingress:
+    annotations:
+      traefik.ingress.kubernetes.io/router.entrypoints: web
+      # No TLS in development
+    hosts:
+      - host: localhost
+        paths:
+          - path: /
+            pathType: Prefix
+    # Disable TLS for development
+    tls: []
+
+# Disable network policies in development for easier debugging
+networkPolicies:
+  enabled: false
+
+# Container overrides for development
+containers:
+  defaultResources:
+    requests:
+      memory: "64Mi"
+      cpu: "50m"
+    limits:
+      memory: "256Mi"
+      cpu: "250m"
+  
+  # More frequent cleanup in development
+  cleanup:
+    idleTimeoutMinutes: 15
+    maxLifetimeHours: 4
+    cleanupIntervalMinutes: 2
+
+# Development secrets (these should be set via environment variables or external secret management)
+secrets:
+  auth0:
+    secret: "dev-secret-32-chars-long-please"
+    issuerBaseUrl: "https://dev-tenant.auth0.com"
+    clientId: "dev-client-id"
+    clientSecret: "dev-client-secret"
+    audience: "https://api.dev-container-app.com"
+  
+  database:
+    password: "dev-password"
+    url: "postgresql://postgres:dev-password@postgres:5432/container_app" 

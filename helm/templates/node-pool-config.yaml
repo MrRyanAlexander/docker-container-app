@@ -1,0 +1,175 @@
+{{- if .Values.costOptimization.spotNodes.enabled }}
+# Node pool configuration for spot/preemptible instances
+# This is a template - actual implementation depends on cloud provider
+
+{{- if eq .Values.global.cloudProvider "gcp" }}
+# GCP GKE Node Pool for spot instances
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: spot-node-pool-config
+  namespace: {{ .Values.global.namespace }}
+  annotations:
+    description: "Configuration for GCP spot instances"
+data:
+  nodepool.yaml: |
+    apiVersion: container.v1
+    kind: NodePool
+    metadata:
+      name: spot-node-pool
+    spec:
+      cluster: {{ .Values.global.clusterName }}
+      initialNodeCount: {{ .Values.costOptimization.spotNodes.initialNodeCount }}
+      nodeConfig:
+        machineType: {{ .Values.costOptimization.spotNodes.machineType }}
+        preemptible: true
+        diskSizeGb: {{ .Values.costOptimization.spotNodes.diskSizeGb }}
+        oauthScopes:
+        - https://www.googleapis.com/auth/cloud-platform
+        labels:
+          node-type: spot
+          workload-type: user-containers
+        taints:
+        - key: spot-instance
+          value: "true"
+          effect: NoSchedule
+      autoscaling:
+        enabled: true
+        minNodeCount: {{ .Values.costOptimization.spotNodes.minNodes }}
+        maxNodeCount: {{ .Values.costOptimization.spotNodes.maxNodes }}
+      management:
+        autoUpgrade: true
+        autoRepair: true
+{{- end }}
+
+{{- if eq .Values.global.cloudProvider "aws" }}
+# AWS EKS Node Group for spot instances
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: spot-node-group-config
+  namespace: {{ .Values.global.namespace }}
+  annotations:
+    description: "Configuration for AWS spot instances"
+data:
+  nodegroup.yaml: |
+    apiVersion: eks.aws.amazon.com/v1
+    kind: NodeGroup
+    metadata:
+      name: spot-node-group
+    spec:
+      clusterName: {{ .Values.global.clusterName }}
+      capacityType: SPOT
+      instanceTypes:
+      {{- range .Values.costOptimization.spotNodes.instanceTypes }}
+      - {{ . }}
+      {{- end }}
+      scalingConfig:
+        minSize: {{ .Values.costOptimization.spotNodes.minNodes }}
+        maxSize: {{ .Values.costOptimization.spotNodes.maxNodes }}
+        desiredSize: {{ .Values.costOptimization.spotNodes.initialNodeCount }}
+      diskSize: {{ .Values.costOptimization.spotNodes.diskSizeGb }}
+      labels:
+        node-type: spot
+        workload-type: user-containers
+      taints:
+      - key: spot-instance
+        value: "true"
+        effect: NoSchedule
+{{- end }}
+
+{{- if eq .Values.global.cloudProvider "azure" }}
+# Azure AKS Node Pool for spot instances
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: spot-node-pool-config
+  namespace: {{ .Values.global.namespace }}
+  annotations:
+    description: "Configuration for Azure spot instances"
+data:
+  nodepool.yaml: |
+    apiVersion: containerservice.azure.com/v1
+    kind: AgentPool
+    metadata:
+      name: spot-node-pool
+    spec:
+      clusterName: {{ .Values.global.clusterName }}
+      scaleSetPriority: Spot
+      scaleSetEvictionPolicy: Delete
+      spotMaxPrice: {{ .Values.costOptimization.spotNodes.maxPrice }}
+      vmSize: {{ .Values.costOptimization.spotNodes.vmSize }}
+      count: {{ .Values.costOptimization.spotNodes.initialNodeCount }}
+      minCount: {{ .Values.costOptimization.spotNodes.minNodes }}
+      maxCount: {{ .Values.costOptimization.spotNodes.maxNodes }}
+      enableAutoScaling: true
+      osDiskSizeGB: {{ .Values.costOptimization.spotNodes.diskSizeGb }}
+      nodeTaints:
+      - spot-instance=true:NoSchedule
+      nodeLabels:
+        node-type: spot
+        workload-type: user-containers
+{{- end }}
+
+---
+# Toleration for user containers to run on spot nodes
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: spot-node-tolerations
+  namespace: {{ .Values.global.namespace }}
+data:
+  tolerations.yaml: |
+    # Add these tolerations to user container deployments
+    tolerations:
+    - key: spot-instance
+      operator: Equal
+      value: "true"
+      effect: NoSchedule
+    - key: kubernetes.azure.com/scalesetpriority
+      operator: Equal
+      value: spot
+      effect: NoSchedule
+    - key: cloud.google.com/gke-preemptible
+      operator: Equal
+      value: "true"
+      effect: NoSchedule
+
+---
+# Node affinity for user containers to prefer spot nodes
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: spot-node-affinity
+  namespace: {{ .Values.global.namespace }}
+data:
+  affinity.yaml: |
+    # Add this affinity to user container deployments
+    affinity:
+      nodeAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          preference:
+            matchExpressions:
+            - key: node-type
+              operator: In
+              values:
+              - spot
+        - weight: 50
+          preference:
+            matchExpressions:
+            - key: workload-type
+              operator: In
+              values:
+              - user-containers
+      # Anti-affinity to spread containers across nodes
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                type: user-container
+            topologyKey: kubernetes.io/hostname
+
+{{- end }} 

@@ -20,10 +20,12 @@ model User {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  sessions    Session[]
-  userEnv     UserEnv?
-  userData    UserData[]
-  containers  Container[]
+  sessions       Session[]
+  userEnv        UserEnv?
+  userData       UserData[]
+  containers     Container[]
+  auditLogs      AuditLog[]
+  adminAuditLogs AuditLog[] @relation("AdminAuditLogs")
 
   @@map("users")
 }
@@ -92,11 +94,29 @@ model Container {
   storageLimit  Int               @default(1024) @map("storage_limit") // in MB
 
   // Relations
-  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sessions Session[]
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessions  Session[]
+  auditLogs AuditLog[]
 
   @@unique([userId, name])
   @@map("containers")
+}
+
+model AuditLog {
+  id          String      @id @default(cuid())
+  action      AuditAction
+  containerId String      @map("container_id")
+  userId      String      @map("user_id")
+  adminUserId String?     @map("admin_user_id")
+  details     String
+  timestamp   DateTime    @default(now())
+
+  // Relations
+  container Container? @relation(fields: [containerId], references: [id], onDelete: Cascade)
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  admin     User?      @relation("AdminAuditLogs", fields: [adminUserId], references: [id])
+
+  @@map("audit_logs")
 }
 
 enum ContainerStatus {
@@ -106,4 +126,14 @@ enum ContainerStatus {
   STOPPING
   ERROR
   TERMINATED
+}
+
+enum AuditAction {
+  CREATE
+  START
+  STOP
+  CLEANUP_IDLE
+  FORCE_CLEANUP
+  DELETE
+  ERROR
 } 
