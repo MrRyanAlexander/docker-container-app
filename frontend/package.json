@@ -11,8 +11,14 @@
   "dependencies": {
     "@auth0/auth0-react": "^2.3.0",
     "@auth0/nextjs-auth0": "^4.6.1",
+    "@prisma/client": "^6.9.0",
+    "@types/dockerode": "^3.3.39",
+    "@types/pg": "^8.15.4",
+    "dockerode": "^4.0.6",
     "next": "15.3.3",
     "next-auth": "^4.24.11",
+    "pg": "^8.16.0",
+    "prisma": "^6.9.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

@@ -1,0 +1,109 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  auth0Id   String   @unique @map("auth0_id")
+  name      String?
+  picture   String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  sessions    Session[]
+  userEnv     UserEnv?
+  userData    UserData[]
+  containers  Container[]
+
+  @@map("users")
+}
+
+model Session {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  containerId String?   @map("container_id")
+  startedAt   DateTime  @default(now()) @map("started_at")
+  endedAt     DateTime? @map("ended_at")
+  ipAddress   String?   @map("ip_address")
+  userAgent   String?   @map("user_agent")
+
+  // Relations
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  container Container? @relation(fields: [containerId], references: [id])
+
+  @@map("sessions")
+}
+
+model UserEnv {
+  id        String   @id @default(cuid())
+  userId    String   @unique @map("user_id")
+  config    Json     @default("{}")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_envs")
+}
+
+model UserData {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  key       String
+  data      Json
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@map("user_data")
+}
+
+model Container {
+  id            String            @id @default(cuid())
+  userId        String            @map("user_id")
+  dockerId      String?           @unique @map("docker_id")
+  name          String
+  image         String            @default("node:18-alpine")
+  status        ContainerStatus   @default(STOPPED)
+  port          Int?
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+  startedAt     DateTime?         @map("started_at")
+  stoppedAt     DateTime?         @map("stopped_at")
+  lastActivity  DateTime?         @map("last_activity")
+  
+  // Resource limits
+  cpuLimit      Float             @default(0.5) @map("cpu_limit")
+  memoryLimit   Int               @default(512) @map("memory_limit") // in MB
+  storageLimit  Int               @default(1024) @map("storage_limit") // in MB
+
+  // Relations
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessions Session[]
+
+  @@unique([userId, name])
+  @@map("containers")
+}
+
+enum ContainerStatus {
+  STOPPED
+  STARTING
+  RUNNING
+  STOPPING
+  ERROR
+  TERMINATED
+} 
