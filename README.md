@@ -1,181 +1,225 @@
-# Per-User Containerized App
+# 🐳 Container App - Per-User Containerized Environments
 
-A modern, secure, and scalable web application where each authenticated user receives their own isolated Docker container environment.
+[![CI/CD Pipeline](https://github.com/MrRyanAlexander/docker-container-app/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/MrRyanAlexander/docker-container-app/actions/workflows/ci-cd.yml)
+[![GitHub](https://img.shields.io/github/actions/workflow/status/MrRyanAlexander/docker-container-app/ci-cd.yml?branch=main&label=tests)](https://github.com/MrRyanAlexander/docker-container-app/actions)
+[![codecov](https://codecov.io/gh/MrRyanAlexander/docker-container-app/branch/main/graph/badge.svg)](https://codecov.io/gh/MrRyanAlexander/docker-container-app)
+[![Docker](https://img.shields.io/badge/docker-ready-blue)](https://github.com/MrRyanAlexander/docker-container-app)
+[![Kubernetes](https://img.shields.io/badge/kubernetes-ready-blue)](https://github.com/MrRyanAlexander/docker-container-app)
+[![License](https://img.shields.io/github/license/MrRyanAlexander/docker-container-app)](./LICENSE)
 
-## Tech Stack
+> A modern, secure, and scalable web application where each authenticated user receives their own isolated Docker container environment.
 
-- **Frontend**: Next.js 15 with TypeScript, Tailwind CSS
-- **Authentication**: Auth0
-- **Orchestration**: Kubernetes
-- **Routing**: Traefik
-- **Containerization**: Docker
-- **Database**: PostgreSQL
-- **Protection**: Cloudflare (for production)
+## ✨ Features
 
-## Features
+- 🔐 **Secure Authentication** - Auth0 integration with JWT validation
+- 🐳 **Per-User Containers** - Isolated Docker environments with resource limits
+- 🚀 **Modern Stack** - Next.js 15, TypeScript, Tailwind CSS
+- ⚡ **Production Ready** - Kubernetes, Traefik, automated CI/CD
+- 🛡️ **Enterprise Security** - DDoS protection, network policies, RBAC
+- 📊 **Monitoring** - Health checks, metrics, structured logging
+- 🧪 **Comprehensive Testing** - 67 tests across unit, integration, and E2E
 
-- 🔐 Secure authentication with Auth0
-- 🐳 Per-user isolated Docker containers
-- 🚀 Modern Next.js frontend with server-side rendering
-- ⚡ Fast development environment with hot reload
-- 🔒 Enterprise-grade security headers and policies
-- 📊 Resource management and monitoring
-- 🌐 Production-ready with Kubernetes and Traefik
+## 🏗️ Architecture
 
-## Prerequisites
+```mermaid
+graph TB
+    A[User] --> B[Cloudflare]
+    B --> C[Traefik Ingress]
+    C --> D[Next.js Frontend]
+    D --> E[Auth0]
+    D --> F[Container API]
+    F --> G[Docker/Kubernetes]
+    F --> H[PostgreSQL]
+    G --> I[User Container 1]
+    G --> J[User Container 2]
+    G --> K[User Container N]
+```
 
-- Node.js 18+ (LTS recommended)
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js 18+ 
 - Docker Desktop
-- Docker Compose
-- kubectl (for Kubernetes deployment)
-- Helm (for Kubernetes deployment)
+- kubectl & Helm (for production)
 
-## Quick Start
-
-### 1. Clone and Setup
-
+### 1. Clone & Setup
 ```bash
-git clone <repository-url>
-cd per-user-containerized-app
+git clone https://github.com/MrRyanAlexander/docker-container-app.git
+cd docker-container-app
+cp env.example .env
 ```
 
-### 2. Environment Configuration
-
-Create a `.env` file in the root directory:
-
+### 2. Configure Environment
 ```bash
-# Copy the example environment file
-cp .env.example .env
+# Edit .env with your Auth0 credentials
+AUTH0_SECRET=your-32-char-secret
+AUTH0_ISSUER_BASE_URL=https://your-domain.auth0.com
+AUTH0_CLIENT_ID=your-client-id
+AUTH0_CLIENT_SECRET=your-client-secret
 ```
 
-Configure your environment variables:
-
-```env
-# Auth0 Configuration
-AUTH0_SECRET=your-auth0-secret-key
-AUTH0_BASE_URL=http://localhost:3000
-AUTH0_ISSUER_BASE_URL=https://your-domain.us.auth0.com
-AUTH0_CLIENT_ID=your-auth0-client-id
-AUTH0_CLIENT_SECRET=your-auth0-client-secret
-
-# Database Configuration
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=postgres
-POSTGRES_DB=peruser
-```
-
-### 3. Start Development Environment
-
+### 3. Start Development
 ```bash
-# Start all services with Docker Compose
+# Start all services
 docker-compose up -d
 
-# Or start just the database and run frontend locally
+# Or start database only and run frontend locally
 docker-compose up -d db traefik
-cd frontend && npm run dev
+cd frontend && npm install && npm run dev
 ```
 
-### 4. Access the Application
-
-- **Main App**: http://localhost:3000
+### 4. Access Application
+- **App**: http://localhost:3000
 - **Traefik Dashboard**: http://localhost:8080
-- **Database**: localhost:5432
 
-## Development
+## 🧪 Testing
 
-### Frontend Development
+Our comprehensive test suite covers all aspects of the application:
 
+### Test Coverage (67 Total Tests)
+- **Unit Tests**: 29 tests - Core business logic
+- **Integration Tests**: 13 tests - API endpoints & health checks  
+- **Simulation Tests**: 8 tests - Container lifecycle
+- **E2E Tests**: 17 tests - User flows & responsive design
+
+### Run Tests
 ```bash
 cd frontend
-npm install
-npm run dev
+
+# Run all tests
+npm run test:all
+
+# Run specific test suites
+npm run test:unit        # Unit tests
+npm run test:integration # Integration tests  
+npm run test:e2e         # End-to-end tests
+
+# Coverage report
+npm run test:coverage
 ```
 
-The frontend will be available at http://localhost:3000 with hot reload enabled.
+### CI/CD Pipeline
+Every commit triggers automated:
+- ✅ Code quality checks (ESLint, Prettier, TypeScript)
+- ✅ All 67 tests across Node.js 18 & 20
+- ✅ Security scanning (Trivy, CodeQL, Snyk)
+- ✅ Docker build & container testing
+- ✅ Kubernetes manifest validation
 
-### Available Scripts
+## 📦 Tech Stack
 
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run start` - Start production server
-- `npm run lint` - Run ESLint
-- `npm run type-check` - Run TypeScript checks
+| Layer | Technology | Purpose |
+|-------|------------|---------|
+| **Frontend** | Next.js 15, TypeScript, Tailwind | Modern React framework with SSR |
+| **Auth** | Auth0, NextAuth.js | Secure authentication & session management |
+| **Backend** | Next.js API Routes, Prisma | RESTful API with type-safe database access |
+| **Database** | PostgreSQL | Persistent storage for users & containers |
+| **Containers** | Docker, Dockerode | Per-user isolated environments |
+| **Orchestration** | Kubernetes, Helm | Production container orchestration |
+| **Ingress** | Traefik | Routing, SSL termination, rate limiting |
+| **Security** | Cloudflare, Network Policies | DDoS protection & network isolation |
+| **Monitoring** | Winston, Prometheus | Structured logging & metrics |
 
-## Architecture
-
-### Directory Structure
+## 🏗️ Project Structure
 
 ```
-per-user-containerized-app/
-├── frontend/                 # Next.js application
-│   ├── src/
-│   │   ├── app/             # App Router pages
-│   │   ├── components/      # React components
-│   │   └── lib/             # Utility functions
-│   ├── public/              # Static assets
-│   └── Dockerfile           # Frontend container
-├── kubernetes/              # Kubernetes manifests
-├── helm/                    # Helm charts
-├── traefik/                 # Traefik configuration
-├── docker-compose.yml       # Local development
-└── plan.md                  # Detailed implementation plan
+docker-container-app/
+├── 📁 frontend/              # Next.js application
+│   ├── 📁 src/
+│   │   ├── 📁 app/           # App Router pages & layouts
+│   │   ├── 📁 components/    # Reusable React components
+│   │   ├── 📁 lib/           # Utilities & business logic
+│   │   └── 📁 __tests__/     # Test suites
+│   ├── 📁 e2e/              # Playwright E2E tests
+│   └── 📄 Dockerfile        # Frontend container image
+├── 📁 kubernetes/           # K8s deployment manifests
+├── 📁 helm/                 # Helm charts for production
+├── 📁 scripts/              # Deployment & utility scripts
+├── 📁 docs/                 # Project documentation
+├── 📁 .github/workflows/    # CI/CD pipeline
+└── 📄 docker-compose.yml    # Local development environment
 ```
 
-### Container Management
+## 🔒 Security Features
 
-Each authenticated user receives:
-- **Isolated container** with resource limits (0.5 CPU, 512Mi RAM)
-- **Persistent storage** for user data
-- **Automatic cleanup** after inactivity timeout
-- **Secure networking** with no direct public access
-
-## Security
-
-- **Authentication**: Auth0 with JWT validation
-- **Authorization**: User-specific container access
+- **Authentication**: Auth0 with MFA support
+- **Authorization**: User-scoped container access
 - **Network Isolation**: Kubernetes network policies
-- **Resource Limits**: CPU and memory constraints
+- **Resource Limits**: CPU/memory constraints per container
 - **DDoS Protection**: Cloudflare + Traefik rate limiting
-- **Security Headers**: OWASP recommended headers
+- **Container Security**: Non-root users, read-only filesystems
+- **Secrets Management**: Kubernetes secrets, never in environment variables
 
-## Production Deployment
+## 🚀 Production Deployment
 
-### Kubernetes Deployment
-
+### Kubernetes (Recommended)
 ```bash
-# Deploy with Helm
-helm install per-user-app ./helm/per-user-app
+# Using Helm
+helm install container-app ./helm/container-app
 
-# Or use kubectl
+# Or kubectl
 kubectl apply -f kubernetes/
+
+# Or deployment script
+./scripts/deploy.sh production
 ```
 
-### Environment Requirements
+### Environment Setup
+See [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md) for comprehensive deployment guide including:
+- Multi-environment setup (dev/staging/prod)
+- Database configuration
+- Monitoring setup
+- Troubleshooting
 
-- Kubernetes cluster (GKE, EKS, AKS)
-- Traefik as ingress controller
-- Cloudflare for DDoS protection
-- Persistent storage (for user data)
+## 📊 Resource Management
 
-## Monitoring and Observability
+Each user container includes:
+- **CPU Limit**: 0.5-2.0 cores (environment dependent)
+- **Memory Limit**: 512Mi-2Gi (environment dependent)  
+- **Storage**: Persistent volumes for user data
+- **Lifetime**: Auto-cleanup after inactivity
+- **Networking**: Isolated with ingress-only access
 
-- **Logs**: Structured logging with correlation IDs
-- **Metrics**: Prometheus integration
-- **Dashboards**: Grafana dashboards
-- **Alerts**: Alertmanager for critical issues
-
-## Contributing
+## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Run tests: `npm run test:all`
+4. Commit changes: `git commit -m 'Add amazing feature'`
+5. Push to branch: `git push origin feature/amazing-feature`
+6. Open a Pull Request
 
-## License
+### Development Guidelines
+- Write tests for new features
+- Follow TypeScript best practices
+- Update documentation as needed
+- Ensure CI pipeline passes
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+## 📚 Documentation
 
-## Support
+- 📖 [Deployment Guide](./docs/DEPLOYMENT.md) - Complete deployment instructions
+- 📋 [Implementation Plan](./plan.md) - Detailed development roadmap
+- 🏗️ [Architecture Overview](./docs/DEPLOYMENT.md#architecture) - System design details
 
-For questions and support, please open an issue in the GitHub repository. 
+## 🆘 Support & FAQ
+
+**Q: How do I add a new container type?**  
+A: See the container manager in `frontend/src/lib/container-manager.ts`
+
+**Q: How do I customize resource limits?**  
+A: Update the deployment configurations in `kubernetes/` or `helm/`
+
+**Q: How do I add monitoring?**  
+A: Follow the monitoring setup in [`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md)
+
+For more questions, [open an issue](https://github.com/MrRyanAlexander/docker-container-app/issues).
+
+## 📄 License
+
+This project is licensed under the BSD-3-Clause License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+<div align="center">
+  <strong>Built with ❤️ for developers who need isolated, secure container environments</strong>
+</div> 
