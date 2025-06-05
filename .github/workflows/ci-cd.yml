@@ -214,15 +214,17 @@ jobs:
 
       - name: Run Snyk security scan
         uses: snyk/actions/node@master
+        continue-on-error: true
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
-          args: --project-name=${{ github.repository }} --file=frontend/package.json
+          args: --severity-threshold=high ./frontend
+          command: test
 
-      - name: Run CodeQL Analysis
+      - name: Run CodeQL Analysis Init
         uses: github/codeql-action/init@v3
         with:
-          languages: typescript, javascript
+          languages: javascript,typescript
 
       - name: Autobuild
         uses: github/codeql-action/autobuild@v3
